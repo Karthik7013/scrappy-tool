@@ -29,7 +29,6 @@ def is_allowed_url(url: str) -> bool:
         hostname = parsed.hostname.lower()
         if hostname in ("localhost", "127.0.0.1", "::1", "0.0.0.0"):
             return False
-        # Resolve IP and check if private
         ip = socket.gethostbyname(hostname)
         if is_private_ip(ip):
             return False
@@ -37,11 +36,45 @@ def is_allowed_url(url: str) -> bool:
     except Exception:
         return False
 
+# ✅ CORRECT TEMPLATES PATH
 templates = Jinja2Templates(directory="templates")
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+@app.post("/check-url")
+async def check_url(request: Request):
+    data = await request.json()
+    url = data.get("url", "").strip()
+
+    if not url:
+        return {"allowed": False, "message": "URL is empty"}
+
+    if not is_allowed_url(url):
+        return {
+            "allowed": False,
+            "message": "❌ Not allowed: private IP, localhost, or invalid scheme"
+        }
+
+    # Basic robots.txt check
+    try:
+        robots_url = f"{url.rstrip('/')}/robots.txt"
+        robots_resp = requests.get(robots_url, timeout=5)
+        if robots_resp.status_code == 200:
+            content = robots_resp.text
+            if "User-agent: *" in content and "Disallow: /" in content:
+                return {
+                    "allowed": False,
+                    "message": "❌ Blocked by robots.txt (disallows all bots)"
+                }
+    except:
+        pass  # Ignore errors (e.g., no robots.txt)
+
+    return {
+        "allowed": True,
+        "message": "✅ Allowed to scrape (be respectful!)"
+    }
 
 @app.post("/scrape")
 async def scrape(request: Request):
@@ -55,7 +88,7 @@ async def scrape(request: Request):
     if not is_allowed_url(url):
         raise HTTPException(status_code=400, detail="URL not allowed (private/local)")
 
-    # Simple rate limiting: 2 seconds per IP
+    # Rate limiting: 2 seconds per IP
     client_ip = request.client.host
     now = time.time()
     last_time = getattr(app, "_last_request", {})
@@ -65,7 +98,7 @@ async def scrape(request: Request):
 
     try:
         headers = {
-            "User-Agent": "ScrapingPlayground/1.0 (+https://your-app.onrender.com)"
+            "User-Agent": "ScrapingPlayground/1.0 (+https://scrappy-tool.onrender.com)"
         }
         response = requests.get(url, headers=headers, timeout=10)
         response.raise_for_status()
@@ -91,7 +124,6 @@ async def scrape(request: Request):
                     "value": text
                 })
     else:
-        # Fallback: extract visible text
         for i, tag in enumerate(soup.find_all(["p", "h1", "h2", "h3", "h4", "span", "div", "li"])[:20]):
             text = tag.get_text(strip=True)
             if text and len(text) > 10:
