@@ -37,7 +37,7 @@ def is_allowed_url(url: str) -> bool:
     except Exception:
         return False
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="")
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
