@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scraping Playground</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#4f46e5'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background-color: #f3f4f6; transition: background-color 0.2s; }
+    .dark body { background-color: #0f172a; }
+    .tab-btn:not(.active) { @apply text-gray-500 dark:text-gray-400; }
+    .tab-btn.active { @apply bg-primary text-white; }
+    .fade-in { animation: fadeIn 0.2s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="font-sans text-gray-800 dark:text-gray-200">
+  <div class="min-h-screen flex flex-col">
+    <header class="bg-white dark:bg-gray-800 shadow-sm py-4">
+      <div class="container mx-auto px-4 flex justify-between items-center">
+        <div>
+          <h1 class="text-2xl font-bold text-primary">🕸️ Scraping Playground</h1>
+          <p class="text-gray-600 dark:text-gray-400 text-sm mt-1">Scrape websites interactively</p>
+        </div>
+        <button id="themeToggle" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700">
+          <span class="dark:hidden">🌙</span>
+          <span class="hidden dark:inline">☀️</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="flex-grow container mx-auto px-4 py-6">
+      <div class="flex flex-col md:flex-row gap-6">
+        <div class="w-full md:w-1/3 bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 h-fit">
+          <div class="mb-5">
+            <label for="url" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Website URL</label>
+            <input
+              type="url"
+              id="url"
+              placeholder="https://example.com"
+              class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+              value="https://quotes.toscrape.com"
+            />
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Tip: Check <code class="bg-gray-100 dark:bg-gray-600 px-1 rounded">/robots.txt</code>
+            </p>
+          </div>
+
+          <div class="mb-4">
+            <div class="flex border-b border-gray-200 dark:border-gray-700">
+              <button id="tab-prompt" class="tab-btn active py-2 px-4 text-sm font-medium rounded-t-lg">Natural Language</button>
+              <button id="tab-selector" class="tab-btn py-2 px-4 text-sm font-medium rounded-t-lg">CSS / XPath</button>
+            </div>
+          </div>
+
+          <div id="panel-prompt" class="space-y-4">
+            <label for="prompt" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">What to Scrape?</label>
+            <textarea
+              id="prompt"
+              rows="3"
+              placeholder="e.g., Get all product names"
+              class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+            >All quote texts and authors</textarea>
+          </div>
+
+          <div id="panel-selector" class="space-y-4 hidden">
+            <div>
+              <label for="cssSelector" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CSS Selector</label>
+              <input
+                type="text"
+                id="cssSelector"
+                placeholder=".quote .text"
+                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+                value=".quote .text"
+              />
+            </div>
+            <div>
+              <label for="xpathSelector" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">XPath (optional)</label>
+              <input
+                type="text"
+                id="xpathSelector"
+                placeholder="//span[@class='text']"
+                class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          <div class="mt-6 space-y-3">
+            <button id="scrapeBtn" class="w-full bg-primary hover:bg-indigo-700 text-white font-medium py-2.5 px-4 rounded-lg shadow-sm">
+              🔍 Scrape Now
+            </button>
+            <div class="flex gap-2">
+              <button id="saveBtn" class="flex-1 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 rounded-lg">💾 Save</button>
+              <button id="historyBtn" class="flex-1 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 py-1.5 rounded-lg">🕒 History</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="w-full md:w-2/3 bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 flex flex-col">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <h2 class="text-lg font-semibold">Results</h2>
+            <div class="relative" id="exportDropdown">
+              <button id="exportBtn" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-4 0V5a2 2 0 012-2h1a2 2 0 012 2v2M8 7V5a2 2 0 012-2h1a2 2 0 012 2v2m-6 0h8" />
+                </svg>
+                Export
+              </button>
+              <div id="exportMenu" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10 fade-in py-1">
+                <button onclick="exportData('json')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                  <span>📄</span> JSON
+                </button>
+                <button onclick="exportData('csv')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                  <span>📊</span> CSV
+                </button>
+                <button onclick="exportData('xlsx')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                  <span>📈</span> Excel
+                </button>
+                <button onclick="exportData('txt')" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                  <span>📝</span> Text
+                </button>
+                <button onclick="copyJSON()" class="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2">
+                  <span>📋</span> Copy JSON
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="status" class="mb-3 min-h-6 text-sm text-blue-600 dark:text-blue-400"></div>
+          <span id="resultCount" class="text-sm text-gray-500 dark:text-gray-400 mb-4">0 items</span>
+
+          <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700 flex-grow mb-4">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Field</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Value</th>
+                </tr>
+              </thead>
+              <tbody id="resultsTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr><td colspan="2" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">✨ Enter URL and scrape!</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <details class="mt-4">
+            <summary class="cursor-pointer text-sm font-medium text-primary hover:underline flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+              Preview HTML (truncated)
+            </summary>
+            <pre id="htmlPreview" class="mt-2 p-3 bg-gray-100 dark:bg-gray-900 text-xs text-gray-700 dark:text-gray-300 rounded max-h-32 overflow-auto"></pre>
+          </details>
+
+          <div id="loading" class="hidden mt-4 text-center text-gray-500 dark:text-gray-400">
+            <div class="inline-block animate-spin w-5 h-5 border-2 border-t-primary border-solid rounded-full"></div>
+            <span class="ml-2">Scraping...</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="py-4 text-center text-gray-500 dark:text-gray-400 text-sm border-t border-gray-200 dark:border-gray-800 mt-auto">
+      <p>For educational use only • Respect robots.txt</p>
+    </footer>
+  </div>
+
+  <script>
+    let scrapedData = [];
+    let fetchedHtml = '';
+    const TABS = { prompt: 'prompt', selector: 'selector' };
+    let currentTab = TABS.prompt;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      if (savedTheme === 'dark') document.documentElement.classList.add('dark');
+      switchTab(currentTab);
+    });
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    });
+
+    document.getElementById('tab-prompt').addEventListener('click', () => switchTab(TABS.prompt));
+    document.getElementById('tab-selector').addEventListener('click', () => switchTab(TABS.selector));
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(`tab-${tab}`).classList.add('active');
+      document.getElementById('panel-prompt').classList.toggle('hidden', tab !== TABS.prompt);
+      document.getElementById('panel-selector').classList.toggle('hidden', tab !== TABS.selector);
+    }
+
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      document.getElementById('exportMenu').classList.toggle('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#exportDropdown')) {
+        document.getElementById('exportMenu').classList.add('hidden');
+      }
+    });
+
+    // REAL SCRAPE CALL TO BACKEND
+    document.getElementById('scrapeBtn').addEventListener('click', async () => {
+      const url = document.getElementById('url').value.trim();
+      if (!url) return showStatus('Please enter a URL.', 'error');
+
+      let selector = '';
+      if (currentTab === 'selector') {
+        selector = document.getElementById('cssSelector').value.trim() || 
+                   document.getElementById('xpathSelector').value.trim();
+        if (!selector) {
+          return showStatus('Please enter a CSS or XPath selector.', 'error');
+        }
+      }
+
+      showStatus('Scraping...', 'info');
+      document.getElementById('loading').classList.remove('hidden');
+      document.getElementById('resultsTableBody').innerHTML = '<tr><td colspan="2" class="px-4 py-8 text-center">Processing...</td></tr>';
+
+      try {
+        const res = await fetch('/scrape', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url, selector })
+        });
+
+        const result = await res.json();
+
+        if (!res.ok) {
+          throw new Error(result.detail || 'Scraping failed');
+        }
+
+        scrapedData = result.data;
+        fetchedHtml = result.html_preview;
+        renderResults(scrapedData);
+        document.getElementById('htmlPreview').textContent = fetchedHtml;
+        showStatus(`Success! Found ${scrapedData.length} items.`, 'success');
+      } catch (err) {
+        showStatus(`Error: ${err.message}`, 'error');
+      } finally {
+        document.getElementById('loading').classList.add('hidden');
+      }
+    });
+
+    function renderResults(data) {
+      const tbody = document.getElementById('resultsTableBody');
+      const countEl = document.getElementById('resultCount');
+
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No data found.</td></tr>';
+        countEl.textContent = '0 items';
+        return;
+      }
+
+      countEl.textContent = `${data.length} item${data.length !== 1 ? 's' : ''}`;
+      tbody.innerHTML = data.map((item, i) => `
+        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+          <td class="px-4 py-3 text-sm font-medium">${item.field}</td>
+          <td class="px-4 py-3 text-sm break-words max-w-xs">${item.value}</td>
+        </tr>
+      `).join('');
+    }
+
+    function showStatus(msg, type = 'info') {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'mb-3 min-h-6 text-sm ' +
+        (type === 'error' ? 'text-red-600 dark:text-red-400' :
+         type === 'success' ? 'text-green-600 dark:text-green-400' :
+         'text-blue-600 dark:text-blue-400');
+    }
+
+    function exportData(format) {
+      if (!scrapedData || scrapedData.length === 0) {
+        alert('No data to export. Please scrape first.');
+        return;
+      }
+
+      const data = scrapedData;
+      let content, mimeType, filename;
+
+      switch (format) {
+        case 'json':
+          content = JSON.stringify(data, null, 2);
+          mimeType = 'application/json';
+          filename = 'scraped-data.json';
+          break;
+        case 'txt':
+          content = data.map(d => `${d.field}: ${d.value}`).join('\n');
+          mimeType = 'text/plain';
+          filename = 'scraped-data.txt';
+          break;
+        case 'csv':
+          const header = 'Field,Value\n';
+          const rows = data.map(d => `"${escapeCsv(d.field)}","${escapeCsv(d.value)}"`).join('\n');
+          content = header + rows;
+          mimeType = 'text/csv';
+          filename = 'scraped-data.csv';
+          break;
+        case 'xlsx':
+          const ws = XLSX.utils.json_to_sheet(data);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, "Data");
+          XLSX.writeFile(wb, "scraped-data.xlsx");
+          document.getElementById('exportMenu').classList.add('hidden');
+          return;
+        default:
+          return;
+      }
+
+      downloadFile(filename, content, mimeType);
+      document.getElementById('exportMenu').classList.add('hidden');
+    }
+
+    function escapeCsv(str) {
+      if (typeof str !== 'string') return str;
+      return str.replace(/"/g, '""');
+    }
+
+    function copyJSON() {
+      if (!scrapedData) return;
+      navigator.clipboard.writeText(JSON.stringify(scrapedData, null, 2))
+        .then(() => showStatus('Copied to clipboard!', 'success'))
+        .catch(() => showStatus('Failed to copy.', 'error'));
+      document.getElementById('exportMenu').classList.add('hidden');
+    }
+
+    function downloadFile(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      const config = {
+        url: document.getElementById('url').value,
+        prompt: document.getElementById('prompt').value,
+        css: document.getElementById('cssSelector').value,
+        xpath: document.getElementById('xpathSelector').value,
+        tab: currentTab,
+        timestamp: new Date().toISOString()
+      };
+      const history = JSON.parse(localStorage.getItem('scraperHistory') || '[]');
+      history.unshift(config);
+      localStorage.setItem('scraperHistory', JSON.stringify(history.slice(0, 5)));
+      showStatus('Scraper saved!', 'success');
+    });
+
+    document.getElementById('historyBtn').addEventListener('click', () => {
+      const history = JSON.parse(localStorage.getItem('scraperHistory') || '[]');
+      if (history.length === 0) return alert('No saved scrapers.');
+
+      const options = history.map((h, i) => 
+        `${i + 1}. ${h.url}\n   → ${h.tab === 'prompt' ? h.prompt : (h.css || h.xpath)}`
+      ).join('\n\n');
+      const choice = prompt('Load a saved scraper (1-' + history.length + '):\n\n' + options);
+      const idx = parseInt(choice) - 1;
+      if (idx >= 0 && idx < history.length) {
+        const h = history[idx];
+        document.getElementById('url').value = h.url;
+        document.getElementById('prompt').value = h.prompt;
+        document.getElementById('cssSelector').value = h.css;
+        document.getElementById('xpathSelector').value = h.xpath;
+        switchTab(h.tab);
+        showStatus('Loaded saved scraper.', 'success');
+      }
+    });
+  </script>
+</body>
+  </html>
