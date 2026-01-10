@@ -304,6 +304,7 @@
         document.getElementById('htmlPreview').textContent = fetchedHtml;
         showStatus(`Success! Found ${scrapedData.length} items.`, 'success');
       } catch (err) {
+        console.log(err);
         showStatus(`Error: ${err.message}`, 'error');
       } finally {
         document.getElementById('loading').classList.add('hidden');
