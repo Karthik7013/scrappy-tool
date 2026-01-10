@@ -139,7 +139,8 @@
         </div>
         <div class="w-full md:w-2/3 bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 flex flex-col">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <h2 class="text-lg font-semibold">Results</h2>
+            <h2 class="text-lg font-semibold">Results <span id="resultCount"
+                class="text-sm font-normal text-gray-500 dark:text-gray-400 ml-2"></span></h2>
             <div class="relative" id="exportDropdown">
               <button id="exportBtn"
                 class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg">
@@ -297,6 +298,8 @@
 
         scrapedData = result.data;
         fetchedHtml = result.html_preview;
+        console.log(scrapedData)
+        console.log(fetchedHtml)
         renderResults(scrapedData);
         document.getElementById('htmlPreview').textContent = fetchedHtml;
         showStatus(`Success! Found ${scrapedData.length} items.`, 'success');
@@ -308,8 +311,11 @@
     });
 
     function renderResults(data) {
+      console.log(data)
       const tbody = document.getElementById('resultsTableBody');
       const countEl = document.getElementById('resultCount');
+      console.log(tbody)
+      console.log(countEl)
 
       if (!data || data.length === 0) {
         tbody.innerHTML = `<tr>
