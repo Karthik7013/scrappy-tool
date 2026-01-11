@@ -132,7 +132,7 @@ async def scrape(request: Request):
                     "value": text
                 })
 
-    html_preview = str(soup)[:500] + "..."
+    html_preview = str(soup)
 
     return {
         "data": results,
